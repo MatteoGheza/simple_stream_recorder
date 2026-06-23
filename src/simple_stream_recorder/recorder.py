@@ -135,7 +135,8 @@ class Recorder:
         video_crf    = str(self._resolve(camera_name, "video_crf",  23))
         audio_bitrate = self._resolve(camera_name, "audio_bitrate", "128k")
         extra_args   = self._resolve(camera_name, "extra_args", "").split()
-        logger.debug(f"{camera_name}: extra args: {extra_args}")
+        encoding_method = self._resolve(camera_name, "encoding_method", "libx264")
+        logger.debug(f"{camera_name}: extra args: {extra_args}, encoding: {encoding_method}")
 
         base = [
             "ffmpeg",
@@ -150,7 +151,7 @@ class Recorder:
 
         if reencode:
             codec = [
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", video_crf,
+                "-c:v", encoding_method, "-preset", "ultrafast", "-crf", video_crf,
                 "-c:a", "aac", "-b:a", audio_bitrate, "-ar", "44100",
                 "-af", "aresample=async=1:min_hard_comp=0.100000:first_pts=0"
             ]

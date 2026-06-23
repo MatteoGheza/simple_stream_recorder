@@ -1,6 +1,8 @@
 import logging
+import re
 import subprocess
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -15,6 +17,9 @@ class Recorder:
         self._lock = threading.Lock()
         self._processes: dict[str, subprocess.Popen] = {}
         self._current_files: dict[str, str] = {}
+        
+        # Tracks the last time a speed warning was logged to prevent log spam
+        self._last_speed_warning: dict[str, float] = {}
 
     def _resolve(self, camera_name: str, key: str, fallback):
         """Camera-level override → global default → hardcoded fallback."""
@@ -36,9 +41,29 @@ class Recorder:
             out = cam_dir / f"{ts}.mkv"
 
             cmd = self._build_cmd(camera_name, url, str(out))
-            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            log_ffmpeg = self._resolve(camera_name, "log_ffmpeg", True)
+            stderr_dest = subprocess.PIPE if log_ffmpeg else subprocess.DEVNULL
+
+            proc = subprocess.Popen(
+                cmd, 
+                stdout=subprocess.DEVNULL, 
+                stderr=stderr_dest,
+                text=True,
+                errors="replace"
+            )
+            
             self._processes[camera_name] = proc
             self._current_files[camera_name] = str(out)
+            
+            if log_ffmpeg:
+                t = threading.Thread(
+                    target=self._read_stderr, 
+                    args=(camera_name, proc), 
+                    daemon=True
+                )
+                t.start()
+
             mode = "re-encode" if self._resolve(camera_name, "reencode", False) else "copy"
             logger.info(f"{camera_name}: started [{mode}] → {out} (pid={proc.pid})")
             return self._status(camera_name)
@@ -57,6 +82,7 @@ class Recorder:
                 logger.info(f"{camera_name}: stopped")
             self._processes.pop(camera_name, None)
             self._current_files.pop(camera_name, None)
+            self._last_speed_warning.pop(camera_name, None)
             return self._status(camera_name)
 
     def status(self, camera_name: str) -> dict:
@@ -69,6 +95,41 @@ class Recorder:
 
     # ─── private ──────────────────────────────────────────────────────────────
 
+    def _read_stderr(self, camera_name: str, proc: subprocess.Popen):
+        """Reads FFmpeg's stderr, filters out stats, and checks processing speed."""
+        if not proc.stderr:
+            return
+
+        # Matches speed value formats like "speed= 0.85x" or "speed=1.02x"
+        speed_regex = re.compile(r'speed=\s*([0-9.]+)\s*x')
+
+        for line in iter(proc.stderr.readline, ''):
+            # Check if this line is an FFmpeg periodic stats update
+            speed_match = speed_regex.search(line)
+            
+            if speed_match:
+                try:
+                    speed_val = float(speed_match.group(1))
+                    if speed_val < 1.0:
+                        now = time.time()
+                        # Only log a warning once every 5 seconds to prevent log bloat
+                        if now - self._last_speed_warning.get(camera_name, 0) > 5:
+                            logger.warning(
+                                f"[{camera_name} FFmpeg] Performance bottleneck! "
+                                f"Encoding speed dropped to {speed_val}x (falling behind real-time)"
+                            )
+                            self._last_speed_warning[camera_name] = now
+                except ValueError:
+                    pass  # Safely catch instances where speed might temporarily be "N/A"
+            
+            elif "frame=" not in line:
+                # If it doesn't contain performance stats, it's a legitimate error or warning
+                cleaned_line = line.strip()
+                if cleaned_line:
+                    logger.warning(f"[{camera_name} FFmpeg] {cleaned_line}")
+
+        proc.stderr.close()
+
     def _build_cmd(self, camera_name: str, url: str, out: str) -> list[str]:
         reencode     = self._resolve(camera_name, "reencode",       False)
         video_crf    = str(self._resolve(camera_name, "video_crf",  23))
@@ -79,6 +140,7 @@ class Recorder:
         base = [
             "ffmpeg",
             "-loglevel", "warning",
+            "-stats",  # Force stats output despite the 'warning' loglevel layout
             "-rtsp_transport", "tcp",
             "-thread_queue_size", "2048",
             "-buffer_size", "20000000",

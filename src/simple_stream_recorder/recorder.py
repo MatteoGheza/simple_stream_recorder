@@ -150,7 +150,7 @@ class Recorder:
 
         if reencode:
             codec = [
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", video_crf,
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", video_crf,
                 "-c:a", "aac", "-b:a", audio_bitrate, "-ar", "44100",
                 "-af", "aresample=async=1:min_hard_comp=0.100000:first_pts=0"
             ]

@@ -136,6 +136,7 @@ class Recorder:
         audio_bitrate = self._resolve(camera_name, "audio_bitrate", "128k")
         extra_args   = self._resolve(camera_name, "extra_args", "").split()
         encoding_method = self._resolve(camera_name, "encoding_method", "libx264")
+        quality_name_param = "-crf" if encoding_method == "libx264" else "-qp" if encoding_method == "h264_vaapi" else "-q:v"
         preset = self._resolve(camera_name, "preset", "veryfast")
         logger.debug(f"{camera_name}: extra args: {extra_args}, encoding: {encoding_method}, preset: {preset}")
 
@@ -152,7 +153,7 @@ class Recorder:
 
         if reencode:
             codec = [
-                "-c:v", encoding_method, "-preset", preset, "-crf", video_crf,
+                "-c:v", encoding_method, "-preset", preset, quality_name_param, video_crf,
                 "-c:a", "aac", "-b:a", audio_bitrate, "-ar", "44100",
                 "-af", "aresample=async=1:min_hard_comp=0.100000:first_pts=0"
             ]

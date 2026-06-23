@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "simple_stream_recorder"
+version = "0.1.0"
+description = "Simple ffmpeg-compatible stream recorder"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=2.3",
+    "paho-mqtt>=1.6",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+ssr = "simple_stream_recorder.__main__:main"

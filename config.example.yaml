@@ -1,0 +1,23 @@
+streams:
+  camera_one:
+    path: "rtsp://admin:admin@192.168.1.10:554/main/av"
+    recording:
+      reencode: true
+      video_crf: 18            # higher quality than the global 23
+      audio_bitrate: 192k
+      extra_args: "-ac 1"      # stereo to mono
+
+api:
+  token: EXAMPLE_BEARER_TOKEN
+
+mqtt:
+  broker:
+  port: 1883
+  username:
+  password:
+
+recording:
+  path: media
+  reencode: true       # re-encode fixes A/V sync and corruption on cheap cameras
+  video_crf: 23        # libx264 quality: 18=high quality, 28=smaller file (ignored if reencode: false)
+  audio_bitrate: 128k  # AAC bitrate (ignored if reencode: false)

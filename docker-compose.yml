@@ -1,0 +1,10 @@
+services:
+  simple_stream_recorder:
+    build: .
+    container_name: simple_stream_recorder
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./config_docker.yaml:/app/config.yaml:ro
+      - ./media_docker:/media

@@ -80,7 +80,9 @@ class Recorder:
             "ffmpeg",
             "-loglevel", "warning",
             "-rtsp_transport", "tcp",
-            "-fflags", "+discardcorrupt+genpts",
+            "-thread_queue_size", "2048",
+            "-buffer_size", "20000000",
+            "-fflags", "+genpts",
             "-i", url,
         ]
 

@@ -147,11 +147,11 @@ class Recorder:
         ]
         if url.startswith("rtsp://"):
             base += [
-                "-rtsp_transport", "tcp"
+                "-rtsp_transport", "tcp",
+                "-buffer_size", "20000000"
             ]
         base += [
             "-thread_queue_size", "2048",
-            "-buffer_size", "20000000",
             "-fflags", "+genpts",
             "-i", url,
         ]

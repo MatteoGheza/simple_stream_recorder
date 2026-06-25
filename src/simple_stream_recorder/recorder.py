@@ -143,8 +143,13 @@ class Recorder:
         base = [
             "ffmpeg",
             "-loglevel", "warning",
-            "-stats",  # Force stats output despite the 'warning' loglevel layout
-            "-rtsp_transport", "tcp",
+            "-stats"  # Force stats output despite the 'warning' loglevel layout
+        ]
+        if url.startswith("rtsp://"):
+            base += [
+                "-rtsp_transport", "tcp"
+            ]
+        base += [
             "-thread_queue_size", "2048",
             "-buffer_size", "20000000",
             "-fflags", "+genpts",
